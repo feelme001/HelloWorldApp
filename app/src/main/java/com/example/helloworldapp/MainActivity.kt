@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,6 +26,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,21 +38,33 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.helloworldapp.ui.theme.HelloWorldAppTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import java.time.LocalTime
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             HelloWorldAppTheme {
+                val scrollState = rememberScrollState()
+                var name by remember { mutableStateOf("")}
+                var email by remember { mutableStateOf("")}
+
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    Column {
+
+                    Column(
+                        modifier = Modifier.verticalScroll(scrollState)
+                    ) {
+                        TimeBasedGreeting("Android")
                         ResponsiveColumn()
-                        Greeting("Android", modifier = Modifier.padding(30.dp))
+                        Greeting("Android", name, email, modifier = Modifier.padding(30.dp))
                         Divider()  // Optional: Adds a visual separator
-                        MyForm()
+                        MyForm(name, onNameChange = { name = it }, email, onEmailChange = { email = it})
                     }
                 }
             }
@@ -96,7 +111,7 @@ fun ResponsiveColumn() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
+fun Greeting(name: String, email: String, modifier: Modifier = Modifier) {
     // State to hold the greeting message
     var greetingText by remember { mutableStateOf("Welcome to Kotlin, $name!") }
     var text by remember { mutableStateOf("")}
@@ -138,12 +153,36 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+fun TimeBasedGreeting(name: String) {
+    val currentTimeFlow = flow {
+        while (true) {
+            emit(LocalTime.now())
+            delay(60000) // Delay for one minute
+        }
+    }
+
+    // Collecting the current time flow to trigger recompositions every minute
+    LaunchedEffect(key1 = currentTimeFlow) {
+        currentTimeFlow.collect { currentTime ->
+            // This block will run every time the flow emits, triggering recomposition
+
+        }
+    }
+
+    val hour = LocalTime.now().hour
+    val greeting = when {
+        hour < 12 -> "Good morning"
+        hour < 18 -> "Good afternoon"
+        else -> "Good evening"
+    }
+    Text(text = "$greeting, $name!", style = MaterialTheme.typography.titleLarge)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyForm() {
     // First, we'll define some state variables to hold the input data for our form fields.
-    var name by remember { mutableStateOf("")}
-    var email by remember { mutableStateOf("")}
     var isSubscribed by remember { mutableStateOf(false)}
 
     // Define isFormValid here to use it within the Composable function
@@ -164,7 +203,7 @@ fun MyForm() {
         )
         TextField(
             value = email,
-            onValueChange = { name = it},
+            onValueChange = { email = it},
             label = { Text("Email")}
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
